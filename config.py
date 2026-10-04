@@ -1,9 +1,11 @@
+import json
 import os
+
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials
 
-# تحميل المتغيرات من ملف .env الموجود في مجلد المشروع
+# Load project environment variables.
 load_dotenv()
 
 # ================= إعدادات قاعدة البيانات =================
@@ -40,26 +42,43 @@ if not ADMIN_PASSWORD:
 # ================= إعدادات رديس (Redis) =================
 REDIS_URL = os.getenv("REDIS_URL")
 
-# ================= 🚀 تهيئة Firebase للإشعارات (من Render Secret Files) =================
-# البحث عن الملف السري في المجلد الرئيسي أو في مجلد أسرار Render
-firebase_paths = [
-    "firebase-adminsdk.json",                  # المجلد الرئيسي
-    "/etc/secrets/firebase-adminsdk.json"      # مجلد أسرار Render
-]
+# ================= Firebase initialization =================
+def _load_firebase_credentials():
+    """Load Firebase credentials from env var first, then secret file paths."""
+    raw = os.getenv("FIREBASE_CREDENTIALS")
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict) and data.get("type") and data.get("client_email"):
+                return data
+        except Exception as exc:
+            print(f"⚠️ Firebase env JSON is invalid: {exc}")
 
-firebase_cert_path = None
-for path in firebase_paths:
-    if os.path.exists(path):
-        firebase_cert_path = path
-        break
+    firebase_paths = [
+        "firebase-adminsdk.json",
+        "/etc/secrets/firebase-adminsdk.json",
+    ]
 
-if firebase_cert_path:
+    for path in firebase_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+                if isinstance(data, dict) and data.get("type") and data.get("client_email"):
+                    return data
+            except Exception as exc:
+                print(f"⚠️ Failed to read Firebase secret from {path}: {exc}")
+
+    return None
+
+firebase_credentials = _load_firebase_credentials()
+if firebase_credentials:
     try:
-        cred = credentials.Certificate(firebase_cert_path)
+        cred = credentials.Certificate(firebase_credentials)
         if not firebase_admin._apps:
             firebase_admin.initialize_app(cred)
-        print(f"✅ تم تهيئة Firebase بنجاح من المسار: {firebase_cert_path}")
+        print("✅ تم تهيئة Firebase بنجاح.")
     except Exception as e:
         print(f"❌ خطأ في تهيئة Firebase: {e}")
 else:
-    print("⚠️ تحذير: لم يتم العثور على ملف 'firebase-adminsdk.json' السري في Render. الإشعارات لن تعمل!")
+    print("⚠️ تحذير: لم يتم العثور على بيانات Firebase válidas. الإشعارات لن تعمل حتى يتم تجهيز المتغيرات أو الملفات السرية.")
