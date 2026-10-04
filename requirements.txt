@@ -1,0 +1,22 @@
+# --- Web Server ---
+aiohttp==3.9.3
+
+# --- Database ---
+asyncpg==0.29.0
+
+# --- Telegram Bot ---
+aiogram==3.4.1
+
+# --- Security & Auth ---
+python-dotenv==1.0.1
+PyJWT==2.8.0
+bcrypt==4.1.2
+
+# --- Firebase Push Notifications ---
+firebase-admin==6.5.0
+
+# --- Cache & Pub/Sub ---
+redis==5.0.3
+
+# --- System Health Monitoring ---
+psutil==5.9.8
